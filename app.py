@@ -48,7 +48,6 @@ def get_sql_query(user_input):
     )
     
     sql_query = response.choices[0].message.content
-    st.write(sql_query)
     return sql_query
 
 # Function to execute the SQL query (using the already established connection)
@@ -71,7 +70,7 @@ user_query = st.text_input("Ask a question (e.g., 'Show properties in New York w
 if user_query:
     # Get SQL query from LLM
     sql_query = get_sql_query(user_query)
-    st.write(f"Generated SQL Query: {sql_query}")
+    #st.write(f"Generated SQL Query: {sql_query}")
     
     # Execute the generated SQL query and get the results
     data = execute_sql(sql_query)
