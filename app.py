@@ -2,9 +2,13 @@ import streamlit as st
 import openai
 import pandas as pd
 import plotly.express as px
+import os
+
+# Load environment variables from the .env file
+load_dotenv()
 
 # Set your OpenAI API key
-openai.api_key = secrets.API_KEY
+openai.api_key = os.getenv('API_KEY')
 # Function to call OpenAI API and generate SQL query
 def get_sql_query(user_input):
     schema="""
