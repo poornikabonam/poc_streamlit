@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.express as px
 
 # Set your OpenAI API key
-openai.api_key = 
+openai.api_key = secrets.API_KEY
 # Function to call OpenAI API and generate SQL query
 def get_sql_query(user_input):
    schema="""
