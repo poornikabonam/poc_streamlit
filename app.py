@@ -1,62 +1,68 @@
 import streamlit as st
-from transformers import pipeline
 from snowflake.snowpark.functions import col
+import openai
+import pandas as pd
 
-# Title of the app
-st.title("Review Insights with Snowflake and LLM")
-st.subheader("Analyze customer reviews using Snowflake and an LLM")
+# Streamlit title and description
+st.title("Airbnb Property Insights")
+st.write("Explore and analyze Airbnb property descriptions with the power of Snowflake and LLM.")
 
-# Fetch data from Snowflake
+# Initialize Snowflake connection using Streamlit's built-in method
+ctx = st.connection("snowflake")
+session = ctx.session()
+
+# Query Airbnb dataset from Snowflake
 @st.cache_data
-def fetch_reviews():
-    ctx = st.connection("snowflake")  # Connect using Streamlit's Snowflake integration
-    session = ctx.session()  # Get the Snowflake session
-    # Replace the table/columns with your actual Snowflake dataset
-    reviews_df = (
-        session.table("reviews.public.customer_reviews")  # Example dataset
-        .select(col("REVIEW_TEXT").alias("review"), col("PRODUCT_NAME").alias("product"))
+def fetch_airbnb_data():
+    query = (
+        session.table("airbnb_properties_information.public.airbnb_properties_information")  # Adjust schema and table name as needed
+        .select(
+            col("PROPERTY_NAME").alias("name"),
+            col("DESCRIPTION").alias("description"),
+            col("LOCATION").alias("location"),
+        )
+        .limit(100)  # Fetch a sample of 100 rows for demo purposes
     )
-    return reviews_df.to_pandas()
+    return query.to_pandas()
 
-# Load the LLM pipeline for sentiment analysis
-@st.cache_resource
-def load_llm():
-    return pipeline("sentiment-analysis")
+# Fetch data
+properties_df = fetch_airbnb_data()
 
-# Main logic
-def main():
-    # Fetch data
-    st.write("Fetching customer reviews from Snowflake...")
-    reviews_df = fetch_reviews()
-    
-    if reviews_df.empty:
-        st.error("No reviews found in the database!")
-        return
-    
-    st.write("Fetched reviews:")
-    st.dataframe(reviews_df)
+# Display data in a table
+st.subheader("Properties Overview")
+st.dataframe(properties_df)
 
-    # Load the LLM
-    st.write("Loading the sentiment analysis model...")
-    sentiment_model = load_llm()
+# OpenAI API key input (hide it for security in production apps)
+openai_api_key = st.text_input("Enter your OpenAI API Key:", type="password")
+openai.api_key = openai_api_key
 
-    # Perform sentiment analysis
-    st.write("Analyzing sentiments...")
-    reviews_df["sentiment"] = reviews_df["review"].apply(
-        lambda text: sentiment_model(text)[0]["label"]
-    )
+# Function to summarize property description
+@st.cache_data(show_spinner=False)
+def summarize_description(description):
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Summarize the following property description."},
+                {"role": "user", "content": description},
+            ],
+        )
+        return response["choices"][0]["message"]["content"]
+    except Exception as e:
+        return f"Error: {e}"
 
-    # Display results
-    st.write("Sentiment Analysis Results:")
-    st.dataframe(reviews_df)
+# Interactive property selection
+selected_property = st.selectbox("Select a property to analyze:", properties_df["name"])
+property_info = properties_df[properties_df["name"] == selected_property].iloc[0]
 
-    # Optional: Download results as CSV
-    st.download_button(
-        label="Download Results as CSV",
-        data=reviews_df.to_csv(index=False),
-        file_name="sentiment_analysis_results.csv",
-        mime="text/csv",
-    )
+st.subheader("Property Details")
+st.write(f"**Name:** {property_info['name']}")
+st.write(f"**Location:** {property_info['location']}")
+st.write(f"**Description:** {property_info['description']}")
 
-if __name__ == "__main__":
-    main()
+# Summarize description
+if st.button("Generate Summary"):
+    with st.spinner("Generating summary..."):
+        summary = summarize_description(property_info["description"])
+    st.write("### Summary:")
+    st.write(summary)
