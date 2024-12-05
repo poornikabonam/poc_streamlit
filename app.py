@@ -72,7 +72,22 @@ if user_query:
     # Display data in a table
     st.dataframe(data)
     
-    # Create a visualization (if relevant data exists)
-    if 'price' in data.columns:
-        fig = px.bar(data, x='name', y='price', title="Property Prices")
-        st.plotly_chart(fig)
+    df = pd.DataFrame(data)
+
+    # Display the results in a table
+    st.subheader("Query Results:")
+    st.dataframe(df)
+
+    # Dynamic Visualization
+    if not df.empty:
+        st.subheader("Visualization")
+        numeric_columns = df.select_dtypes(include=["number"]).columns
+        if len(numeric_columns) >= 2:
+            x_axis = st.selectbox("Select X-axis:", numeric_columns)
+            y_axis = st.selectbox("Select Y-axis:", numeric_columns)
+            st.line_chart(data=df, x=x_axis, y=y_axis)
+        else:
+            st.write("Not enough numeric data for visualization.")
+    else:
+        st.write("No data returned from the query.")
+
