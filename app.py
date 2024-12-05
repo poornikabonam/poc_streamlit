@@ -59,7 +59,7 @@ def summarize_description(description):
 # Apply summarization to the dataset
 st.subheader("Property Descriptions Summarized")
 properties_df['DESCRIPTION'] = properties_df['DESCRIPTION'].fillna("No description available")
-properties_df['summary'] = properties_df['DESCRIPTION'][0].apply(summarize_description)
+properties_df['summary'] = properties_df['DESCRIPTION'][0:2].apply(summarize_description)
 
 # Display summarized descriptions
 st.dataframe(properties_df[['name', 'summary', 'price', 'category', 'ratings']])
