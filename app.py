@@ -7,20 +7,20 @@ import plotly.express as px
 openai.api_key = secrets.API_KEY
 # Function to call OpenAI API and generate SQL query
 def get_sql_query(user_input):
-   schema="""
-Airbnb Properties Schema:
-Columns:
-- TIMESTAMP: Timestamp of the entry
-- URL: Property URL
-- AMENITIES: List of amenities
-- AVAILABILITY: Availability status
-- CATEGORY: Property category
-- CATEGORY_RATING: Rating for the category
-- DESCRIPTION: Property description
-- PRICE: Price per night
-- RATINGS: Overall property ratings
-- REVIEWS: Reviews from guests
-"""
+    schema="""
+      Airbnb Properties Schema:
+      Columns:
+      - TIMESTAMP: Timestamp of the entry
+      - URL: Property URL
+      - AMENITIES: List of amenities
+      - AVAILABILITY: Availability status
+      - CATEGORY: Property category
+      - CATEGORY_RATING: Rating for the category
+      - DESCRIPTION: Property description
+      - PRICE: Price per night
+      - RATINGS: Overall property ratings
+      - REVIEWS: Reviews from guests
+      """
     prompt = f"""
     Given the following database schema:
     {schema}
