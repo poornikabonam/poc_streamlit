@@ -28,7 +28,7 @@ def get_sql_query(user_input):
         messages=[{"role": "user", "content": prompt}]
     )
     
-    sql_query = response.choices[0].message
+    sql_query = response.choices[0].message.content
     st.write(sql_query)
     return sql_query
 
