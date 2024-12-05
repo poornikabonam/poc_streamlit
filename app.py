@@ -67,8 +67,8 @@ st.dataframe(properties_df[['NAME', 'summary', 'PRICE', 'CATEGORY', 'RATINGS']])
 # Insights on categories and ratings
 st.subheader("Category Analysis")
 category_analysis = properties_df.groupby('CATEGORY').agg(
-    avg_price=('price', 'mean'),
-    avg_rating=('ratings', 'mean')
+    avg_price=('PRICE', 'mean'),
+    avg_rating=('RATINGS', 'mean')
 ).reset_index()
 
 st.bar_chart(category_analysis, x='category', y=['avg_price', 'avg_rating'])
