@@ -44,11 +44,18 @@ summarizer = load_summarizer()
 
 # Summarize property descriptions
 def summarize_description(description):
-    if not description:
+    if not description or pd.isna(description):
         return "No description available."
-    summary = summarizer(description, max_length=50, min_length=10, do_sample=False)
-    return summary[0]['summary_text']
-
+    try:
+        summary = summarizer(description, max_length=50, min_length=10, do_sample=False)
+        # Check if the summary has expected output
+        if not summary or len(summary) == 0:
+            return "Summary not available."
+        return summary[0].get('summary_text', "Summary not found in response.")
+    except Exception as e:
+        # Log error and return fallback text
+        st.error(f"Error summarizing description: {str(e)}")
+        return "Error summarizing description."
 # Apply summarization to the dataset
 st.subheader("Property Descriptions Summarized")
 properties_df['DESCRIPTION'] = properties_df['DESCRIPTION'].fillna("No description available")
