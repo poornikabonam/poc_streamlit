@@ -1,11 +1,11 @@
 import streamlit as st
 from snowflake.snowpark.functions import col
-import openai
+from transformers import pipeline
 import pandas as pd
 
 # Streamlit title and description
 st.title("Airbnb Property Insights")
-st.write("Explore and analyze Airbnb property descriptions with the power of Snowflake and LLM.")
+st.write("Analyze Airbnb property data with Snowflake and Transformers-powered insights.")
 
 # Initialize Snowflake connection using Streamlit's built-in method
 ctx = st.connection("snowflake")
@@ -15,11 +15,14 @@ session = ctx.session()
 @st.cache_data
 def fetch_airbnb_data():
     query = (
-        session.table("airbnb_properties_information.public.airbnb_properties_information")  # Adjust schema and table name as needed
+        session.table("airbnb.public.properties")  # Adjust schema and table name
         .select(
-            col("PROPERTY_NAME").alias("name"),
+            col("NAME").alias("name"),
             col("DESCRIPTION").alias("description"),
-            col("LOCATION").alias("location"),
+            col("PRICE").alias("price"),
+            col("CATEGORY").alias("category"),
+            col("CATEGORY_RATING").alias("category_rating"),
+            col("RATINGS").alias("ratings"),
         )
         .limit(100)  # Fetch a sample of 100 rows for demo purposes
     )
@@ -32,37 +35,33 @@ properties_df = fetch_airbnb_data()
 st.subheader("Properties Overview")
 st.dataframe(properties_df)
 
-# OpenAI API key input (hide it for security in production apps)
-openai_api_key = st.text_input("Enter your OpenAI API Key:", type="password")
-openai.api_key = openai_api_key
+# Load the summarization model from Transformers
+@st.cache_resource
+def load_summarizer():
+    return pipeline("summarization", model="facebook/bart-large-cnn")
 
-# Function to summarize property description
-@st.cache_data(show_spinner=False)
+summarizer = load_summarizer()
+
+# Summarize property descriptions
 def summarize_description(description):
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Summarize the following property description."},
-                {"role": "user", "content": description},
-            ],
-        )
-        return response["choices"][0]["message"]["content"]
-    except Exception as e:
-        return f"Error: {e}"
+    if not description:
+        return "No description available."
+    summary = summarizer(description, max_length=50, min_length=10, do_sample=False)
+    return summary[0]['summary_text']
 
-# Interactive property selection
-selected_property = st.selectbox("Select a property to analyze:", properties_df["name"])
-property_info = properties_df[properties_df["name"] == selected_property].iloc[0]
+# Apply summarization to the dataset
+st.subheader("Property Descriptions Summarized")
+properties_df['summary'] = properties_df['description'].apply(summarize_description)
 
-st.subheader("Property Details")
-st.write(f"**Name:** {property_info['name']}")
-st.write(f"**Location:** {property_info['location']}")
-st.write(f"**Description:** {property_info['description']}")
+# Display summarized descriptions
+st.dataframe(properties_df[['name', 'summary', 'price', 'category', 'ratings']])
 
-# Summarize description
-if st.button("Generate Summary"):
-    with st.spinner("Generating summary..."):
-        summary = summarize_description(property_info["description"])
-    st.write("### Summary:")
-    st.write(summary)
+# Insights on categories and ratings
+st.subheader("Category Analysis")
+category_analysis = properties_df.groupby('category').agg(
+    avg_price=('price', 'mean'),
+    avg_rating=('ratings', 'mean')
+).reset_index()
+
+st.bar_chart(category_analysis, x='category', y=['avg_price', 'avg_rating'])
+
