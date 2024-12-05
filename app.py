@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Set your OpenAI API key
-openai.api_key = st.secrets["general"]["API_KEY"]
+openai.api_key = st.secrets["API_KEY"]
 # Function to call OpenAI API and generate SQL query
 def get_sql_query(user_input):
     schema="""
