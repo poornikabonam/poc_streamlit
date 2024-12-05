@@ -1,75 +1,69 @@
 import streamlit as st
-from snowflake.snowpark.functions import col
-from transformers import pipeline
+import openai
 import pandas as pd
+import plotly.express as px
 
-# Streamlit title and description
-st.title("Airbnb Property Insights")
-st.write("Analyze Airbnb property data with Snowflake and Transformers-powered insights.")
-
-# Initialize Snowflake connection using Streamlit's built-in method
-ctx = st.connection("snowflake")
-session = ctx.session()
-
-# Query Airbnb dataset from Snowflake
-@st.cache_data
-def fetch_airbnb_data():
-    query = (
-        session.table("AIRBNB_PROPERTIES_INFORMATION.public.AIRBNB_PROPERTIES_INFORMATION")  # Adjust schema and table name
-        .select(
-            col("NAME").alias("name"),
-            col("DESCRIPTION").alias("description"),
-            col("PRICE").alias("price"),
-            col("CATEGORY").alias("category"),
-            col("CATEGORY_RATING").alias("category_rating"),
-            col("RATINGS").alias("ratings"),
-        )
-        .limit(100)  # Fetch a sample of 100 rows for demo purposes
+# Set your OpenAI API key
+openai.api_key = 
+# Function to call OpenAI API and generate SQL query
+def get_sql_query(user_input):
+   schema="""
+Airbnb Properties Schema:
+Columns:
+- TIMESTAMP: Timestamp of the entry
+- URL: Property URL
+- AMENITIES: List of amenities
+- AVAILABILITY: Availability status
+- CATEGORY: Property category
+- CATEGORY_RATING: Rating for the category
+- DESCRIPTION: Property description
+- PRICE: Price per night
+- RATINGS: Overall property ratings
+- REVIEWS: Reviews from guests
+"""
+    prompt = f"""
+    Given the following database schema:
+    {schema}
+    Translate this user query into a SQL query:
+    {user_input}
+    """
+    response = openai.chat.completions.create(
+        model="gpt-4",  # You can use the model you have access to
+        messages=[{"role": "user", "content": prompt}]
     )
-    return query.to_pandas()
+    
+    sql_query = response['choices'][0]['message']['content']
+    return sql_query
 
-# Fetch data
-properties_df = fetch_airbnb_data()
+# Function to execute the SQL query (using the already established connection)
+def execute_sql(query):
+    # Use the context already established in Streamlit (ctx)
+    cursor = st.connection("snowflake").cursor()
+    cursor.execute(query)
+    result = cursor.fetchall()
+    columns = [col[0] for col in cursor.description]
+    df = pd.DataFrame(result, columns=columns)
+    return df
 
-# Display data in a table
-st.subheader("Properties Overview")
-st.dataframe(properties_df)
+# Streamlit dashboard setup
+st.title("Interactive Dashboard with LLM")
 
-# Load the summarization model from Transformers
-@st.cache_resource
-def load_summarizer():
-    return pipeline("summarization", model="facebook/bart-large-cnn")
+# Take user input (question)
+user_query = st.text_input("Ask a question (e.g., 'Show properties in New York with rating above 4')")
 
-summarizer = load_summarizer()
-
-# Summarize property descriptions
-def summarize_description(description):
-    if not description or pd.isna(description):
-        return "No description available."
-    try:
-        summary = summarizer(description,max_length=10,min_length=3, do_sample=False)
-        # Check if the summary has expected output
-        if not summary or len(summary) == 0:
-            return "Summary not available."
-        return summary[0].get('summary_text', "Summary not found in response.")
-    except Exception as e:
-        # Log error and return fallback text
-        st.error(f"Error summarizing description: {str(e)}")
-        return "Error summarizing description."
-# Apply summarization to the dataset
-st.subheader("Property Descriptions Summarized")
-properties_df['DESCRIPTION'] = properties_df['DESCRIPTION'].fillna("No description available")
-properties_df['summary'] = properties_df['DESCRIPTION'][0:2].apply(summarize_description)
-
-# Display summarized descriptions
-st.dataframe(properties_df[['NAME', 'summary', 'PRICE', 'CATEGORY', 'RATINGS']])
-
-# Insights on categories and ratings
-st.subheader("Category Analysis")
-category_analysis = properties_df.groupby('CATEGORY').agg(
-    avg_price=('PRICE', 'mean'),
-    avg_rating=('RATINGS', 'mean')
-).reset_index()
-
-st.bar_chart(category_analysis, x='CATEGORY', y=['avg_price', 'avg_rating'])
-
+# Process user input and generate SQL
+if user_query:
+    # Get SQL query from LLM
+    sql_query = get_sql_query(user_query)
+    st.write(f"Generated SQL Query: {sql_query}")
+    
+    # Execute the generated SQL query and get the results
+    data = execute_sql(sql_query)
+    
+    # Display data in a table
+    st.dataframe(data)
+    
+    # Create a visualization (if relevant data exists)
+    if 'price' in data.columns:
+        fig = px.bar(data, x='name', y='price', title="Property Prices")
+        st.plotly_chart(fig)
