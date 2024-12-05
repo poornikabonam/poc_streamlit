@@ -89,12 +89,15 @@ if user_query:
     if not df.empty:
         st.subheader("Visualization")
         numeric_columns = df.select_dtypes(include=["number"]).columns
-        if len(numeric_columns) >= 2:
-            x_axis = st.selectbox("Select X-axis:", numeric_columns)
-            y_axis = st.selectbox("Select Y-axis:", numeric_columns)
+        string_columns = df.select_dtypes(include=["object", "string"]).columns
+    
+        if len(numeric_columns) >= 1 and len(string_columns) >= 1:
+            # Allow X-axis as varchar and Y-axis as numeric
+            x_axis = st.selectbox("Select X-axis (categorical):", string_columns)
+            y_axis = st.selectbox("Select Y-axis (numeric):", numeric_columns)
+            
+            # Create a line chart
             st.line_chart(data=df, x=x_axis, y=y_axis)
-        else:
-            st.write("Not enough numeric data for visualization.")
     else:
         st.write("No data returned from the query.")
 
