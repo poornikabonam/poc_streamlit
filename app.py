@@ -32,7 +32,7 @@ def get_sql_query(user_input):
     {schema}
     Example data:
     {data}
-    Translate this user query into a SQL query:
+    Translate this user query into a SQL query, give strictly only the sql query:
     {user_input}
     """
     response = openai.chat.completions.create(
