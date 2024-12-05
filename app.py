@@ -70,7 +70,7 @@ user_query = st.text_input("Ask a question (e.g., 'Show properties in New York w
 if user_query:
     # Get SQL query from LLM
     sql_query = get_sql_query(user_query)
-    #st.write(f"Generated SQL Query: {sql_query}")
+    st.write(f"Generated SQL Query: {sql_query}")
     
     # Execute the generated SQL query and get the results
     data = execute_sql(sql_query)
