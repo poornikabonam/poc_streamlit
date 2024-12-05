@@ -47,7 +47,7 @@ def summarize_description(description):
     if not description or pd.isna(description):
         return "No description available."
     try:
-        summary = summarizer(description, do_sample=False)
+        summary = summarizer(description,max_length=20 do_sample=False)
         # Check if the summary has expected output
         if not summary or len(summary) == 0:
             return "Summary not available."
