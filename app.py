@@ -66,7 +66,7 @@ st.dataframe(properties_df[['NAME', 'summary', 'PRICE', 'CATEGORY', 'RATINGS']])
 
 # Insights on categories and ratings
 st.subheader("Category Analysis")
-category_analysis = properties_df.groupby('category').agg(
+category_analysis = properties_df.groupby('CATEGORY').agg(
     avg_price=('price', 'mean'),
     avg_rating=('ratings', 'mean')
 ).reset_index()
