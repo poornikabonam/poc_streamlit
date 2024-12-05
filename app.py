@@ -62,7 +62,7 @@ properties_df['DESCRIPTION'] = properties_df['DESCRIPTION'].fillna("No descripti
 properties_df['summary'] = properties_df['DESCRIPTION'][0:2].apply(summarize_description)
 
 # Display summarized descriptions
-st.dataframe(properties_df[['name', 'summary', 'price', 'category', 'ratings']])
+st.dataframe(properties_df[['NAME', 'summary', 'PRICE', 'CATEGORY', 'RATINGS']])
 
 # Insights on categories and ratings
 st.subheader("Category Analysis")
