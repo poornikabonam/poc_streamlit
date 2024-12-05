@@ -13,18 +13,9 @@ openai.api_key = os.getenv('API_KEY')
 # Function to call OpenAI API and generate SQL query
 def get_sql_query(user_input):
     schema="""
-      Airbnb Properties Schema:
+      AIRBNB_PROPERTIES_INFORMATION Schema:
       Columns:
-      - TIMESTAMP: Timestamp of the entry
-      - URL: Property URL
-      - AMENITIES: List of amenities
-      - AVAILABILITY: Availability status
-      - CATEGORY: Property category
-      - CATEGORY_RATING: Rating for the category
-      - DESCRIPTION: Property description
-      - PRICE: Price per night
-      - RATINGS: Overall property ratings
-      - REVIEWS: Reviews from guests
+      - TIMESTAMP, URL, AMENITIES, AVAILABILITY, AVAILABLE_DATES, CATEGORY, CATEGORY_RATING, DESCRIPTION, DESCRIPTION_ITEMS, DETAILS, FINAL_URL, GUESTS, HIGHLIGHTS, HOUSE_RULES, IMAGE, IMAGES, LAT, LONG, NAME, PETS_ALLOWED, PRICE, RATINGS, REVIEWS, SELLER_INFO
       """
     prompt = f"""
     Given the following database schema:
@@ -37,7 +28,8 @@ def get_sql_query(user_input):
         messages=[{"role": "user", "content": prompt}]
     )
     
-    sql_query = response['choices'][0]['message']['content']
+    sql_query = response.choices[0].message
+    st.write(sql_query)
     return sql_query
 
 # Function to execute the SQL query (using the already established connection)
