@@ -15,7 +15,7 @@ session = ctx.session()
 @st.cache_data
 def fetch_airbnb_data():
     query = (
-        session.table("airbnb.public.properties")  # Adjust schema and table name
+        session.table("AIRBNB_PROPERTIES_INFORMATION.public.AIRBNB_PROPERTIES_INFORMATION")  # Adjust schema and table name
         .select(
             col("NAME").alias("name"),
             col("DESCRIPTION").alias("description"),
