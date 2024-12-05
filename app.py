@@ -1,73 +1,62 @@
 import streamlit as st
-import pandas as pd
 from transformers import pipeline
+from snowflake.snowpark.functions import col
 
-# Initialize Hugging Face LLM pipeline
-st.title("Review Insights App")
-st.subheader("Extract actionable insights from product reviews")
+# Title of the app
+st.title("Review Insights with Snowflake and LLM")
+st.subheader("Analyze customer reviews using Snowflake and an LLM")
 
-# Instructions for the user
-st.write("This app fetches product reviews from Snowflake, "
-         "extracts key topics or features using an LLM, "
-         "and generates actionable insights for improvement.")
-
-# Snowflake integration
-# Assume you use Streamlit's built-in connection for Snowflake
-# (Settings -> Data -> Add Snowflake)
+# Fetch data from Snowflake
 @st.cache_data
 def fetch_reviews():
-    query = """
-        SELECT review_id, product_name, review_text, rating
-        FROM product_reviews
-        WHERE product_category = 'Electronics'
-        ORDER BY review_date DESC
-        LIMIT 10;
-    """
-    # Use Streamlit's connection to query Snowflake
-    connection = st.experimental_connection("snowflake", type="sql")
-    result = connection.query(query)
-    return pd.DataFrame(result)
+    ctx = st.connection("snowflake")  # Connect using Streamlit's Snowflake integration
+    session = ctx.session()  # Get the Snowflake session
+    # Replace the table/columns with your actual Snowflake dataset
+    reviews_df = (
+        session.table("reviews.public.customer_reviews")  # Example dataset
+        .select(col("REVIEW_TEXT").alias("review"), col("PRODUCT_NAME").alias("product"))
+    )
+    return reviews_df.to_pandas()
 
-# Hugging Face LLM pipeline
+# Load the LLM pipeline for sentiment analysis
 @st.cache_resource
-def initialize_llm_pipeline():
-    return pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+def load_llm():
+    return pipeline("sentiment-analysis")
 
-# Fetch and display reviews
-st.subheader("Recent Product Reviews")
-reviews_df = fetch_reviews()
-if not reviews_df.empty:
-    st.write("Recent Reviews Fetched from Snowflake:")
+# Main logic
+def main():
+    # Fetch data
+    st.write("Fetching customer reviews from Snowflake...")
+    reviews_df = fetch_reviews()
+    
+    if reviews_df.empty:
+        st.error("No reviews found in the database!")
+        return
+    
+    st.write("Fetched reviews:")
     st.dataframe(reviews_df)
 
-    # Extract review text for selection
-    selected_review = st.selectbox(
-        "Select a review to analyze:", 
-        reviews_df["review_text"].tolist()
+    # Load the LLM
+    st.write("Loading the sentiment analysis model...")
+    sentiment_model = load_llm()
+
+    # Perform sentiment analysis
+    st.write("Analyzing sentiments...")
+    reviews_df["sentiment"] = reviews_df["review"].apply(
+        lambda text: sentiment_model(text)[0]["label"]
     )
 
-    # Extract features from selected review
-    if selected_review:
-        st.subheader("Extracted Features or Topics")
-        llm = initialize_llm_pipeline()
-        candidate_labels = ["battery life", "screen quality", "customer service", "performance", "usability"]
-        result = llm(selected_review, candidate_labels)
+    # Display results
+    st.write("Sentiment Analysis Results:")
+    st.dataframe(reviews_df)
 
-        # Display extracted topics and scores
-        for label, score in zip(result["labels"], result["scores"]):
-            st.write(f"**{label}:** {score:.2f}")
+    # Optional: Download results as CSV
+    st.download_button(
+        label="Download Results as CSV",
+        data=reviews_df.to_csv(index=False),
+        file_name="sentiment_analysis_results.csv",
+        mime="text/csv",
+    )
 
-        # Actionable insights
-        st.subheader("Actionable Insights")
-        actionable_features = [
-            label for label, score in zip(result["labels"], result["scores"]) if score > 0.5
-        ]
-        if actionable_features:
-            st.write("Consider focusing on improving these areas:")
-            st.write(", ".join(actionable_features))
-        else:
-            st.write("No specific actionable areas identified.")
-else:
-    st.write("No reviews available in the database. Please add reviews to proceed.")
-
-st.write("**Note**: This is a demo app for Snowflake, LLM, and Streamlit integration.")
+if __name__ == "__main__":
+    main()
