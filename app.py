@@ -3,6 +3,7 @@ import openai
 import pandas as pd
 import plotly.express as px
 import os
+from dotenv import load_dotenv
 
 # Load environment variables from the .env file
 load_dotenv()
