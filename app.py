@@ -71,5 +71,5 @@ category_analysis = properties_df.groupby('CATEGORY').agg(
     avg_rating=('RATINGS', 'mean')
 ).reset_index()
 
-st.bar_chart(category_analysis, x='category', y=['avg_price', 'avg_rating'])
+st.bar_chart(category_analysis, x='CATEGORY', y=['avg_price', 'avg_rating'])
 
