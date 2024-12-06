@@ -21,7 +21,7 @@ def fetch_data(query):
 
 # Query Airbnb data
 def get_airbnb_data(date_range=None, availability=None):
-    query = "SELECT date, url, amenities, availability, calendar_dates FROM airbnb_data"
+    query = "SELECT date, url, amenities, availability, calendar_dates FROM AIRBNB_PROPERTIES_INFORMATION"
     filters = []
     
     if date_range:
