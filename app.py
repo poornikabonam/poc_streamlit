@@ -32,7 +32,7 @@ end_date = st.sidebar.date_input('End Date', pd.to_datetime('2024-12-31'))
 # Query 1: Get data within the selected date range
 query_data = f"""
     SELECT CATEGORY, PRICE, LAT, LONG, TIMESTAMP
-    FROM your_table
+    FROM AIRBNB_PROPERTIES_INFORMATION
     WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
 """
 df = get_snowflake_data(query_data)
@@ -53,7 +53,7 @@ st.plotly_chart(fig1)
 # Query 2: Get average price and count of listings by category
 query_avg_price = f"""
     SELECT CATEGORY, AVG(PRICE) AS AVG_PRICE, COUNT(*) AS LISTINGS_COUNT
-    FROM your_table
+    FROM AIRBNB_PROPERTIES_INFORMATION
     WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
     GROUP BY CATEGORY
 """
@@ -66,7 +66,7 @@ st.write(avg_price_df)
 # Query 3: Get geographical distribution of listings by category
 query_location = f"""
     SELECT LAT, LONG, CATEGORY
-    FROM your_table
+    FROM AIRBNB_PROPERTIES_INFORMATION
     WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
 """
 location_df = get_snowflake_data(query_location)
@@ -80,7 +80,7 @@ st.plotly_chart(fig2)
 # Query 4: Get price trend over time by category
 query_price_trend = f"""
     SELECT TIMESTAMP, CATEGORY, AVG(PRICE) AS AVG_PRICE
-    FROM your_table
+    FROM AIRBNB_PROPERTIES_INFORMATION
     WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
     GROUP BY TIMESTAMP, CATEGORY
     ORDER BY TIMESTAMP
@@ -96,7 +96,7 @@ st.plotly_chart(fig3)
 # Query 5: Price range per category
 query_price_range = f"""
     SELECT CATEGORY, MIN(PRICE) AS MIN_PRICE, MAX(PRICE) AS MAX_PRICE
-    FROM your_table
+    FROM AIRBNB_PROPERTIES_INFORMATION
     WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
     GROUP BY CATEGORY
 """
@@ -109,7 +109,7 @@ st.write(price_range_df)
 # Query 6: Number of Listings by Category over Time
 query_listing_trend = f"""
     SELECT TIMESTAMP, CATEGORY, COUNT(*) AS LISTINGS_COUNT
-    FROM your_table
+    FROM AIRBNB_PROPERTIES_INFORMATION
     WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
     GROUP BY TIMESTAMP, CATEGORY
     ORDER BY TIMESTAMP
