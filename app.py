@@ -4,94 +4,132 @@ import pandas as pd
 import plotly.express as px
 import os
 from dotenv import load_dotenv
+import plotly.graph_objects as go
 import altair as alt
+import snowflake.connector
 
-# Set up the page configuration
-#st.set_page_config(page_title="Airbnb Dashboard", layout="wide")
 
-# Fetch data from Snowflake
-@st.cache_data
-def fetch_data(query):
-    # Use Streamlit's connection method to connect to Snowflake
+
+# Connect to Snowflake
+def get_snowflake_data(query):
+  
+    
     cursor = st.connection("snowflake").cursor()
     cursor.execute(query)
-    data = cursor.fetchall()
-    columns = [desc[0] for desc in cursor.description]
-    return pd.DataFrame(data, columns=columns)
-
-# Query Airbnb data
-def get_airbnb_data(date_range=None, availability=None):
-    query = "SELECT date, url, amenities, availability, calendar_dates FROM AIRBNB_PROPERTIES_INFORMATION"
-    filters = []
+    df = cursor.fetch_pandas_all()  # Fetches data as a Pandas DataFrame
+    conn.close()
     
-    if date_range:
-        filters.append(f"date BETWEEN '{date_range[0]}' AND '{date_range[1]}'")
-    if availability:
-        filters.append("availability = TRUE")
-    
-    if filters:
-        query += " WHERE " + " AND ".join(filters)
-        
-    return fetch_data(query)
+    return df
 
-# Dashboard Header
-st.title("Airbnb Dashboard")
-st.markdown("### Interactive Dashboard to Explore Airbnb Listings")
+# Streamlit Layout
+st.title('Interactive Airbnb Listings Dashboard')
 
-# Sidebar Filters
-st.sidebar.header("Filter Listings")
-date_range = st.sidebar.date_input("Select Date Range", [])
-availability = st.sidebar.checkbox("Show Only Available Properties")
+# Date Picker for Filtering Data by Timestamp
+st.sidebar.header("Filter by Date Range")
+start_date = st.sidebar.date_input('Start Date', pd.to_datetime('2023-01-01'))
+end_date = st.sidebar.date_input('End Date', pd.to_datetime('2024-12-31'))
 
-# Fetch and filter data
-data = get_airbnb_data(date_range=date_range, availability=availability)
+# Query 1: Get data within the selected date range
+query_data = f"""
+    SELECT CATEGORY, PRICE, LAT, LONG, TIMESTAMP
+    FROM your_table
+    WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
+"""
+df = get_snowflake_data(query_data)
 
-# Show filtered data
-st.subheader("Filtered Data")
-if data.empty:
-    st.warning("No data available for the selected filters.")
-else:
-    st.dataframe(data)
+# Sidebar filter for Category
+st.sidebar.header("Filter by Category")
+category_options = df['CATEGORY'].unique()
+selected_category = st.sidebar.multiselect('Select Category:', category_options, default=category_options)
 
-    # Split into columns for visualizations
-    col1, col2 = st.columns(2)
+# Apply the category filter
+filtered_df = df[df['CATEGORY'].isin(selected_category)]
 
-    # Visualization 1: Availability Distribution
-    with col1:
-        st.markdown("### Availability Status")
-        availability_chart = alt.Chart(data).mark_bar().encode(
-            x=alt.X("availability", title="Availability"),
-            y=alt.Y("count()", title="Count of Listings"),
-            color="availability"
-        ).properties(height=400)
-        st.altair_chart(availability_chart, use_container_width=True)
+# Price Distribution by Category (Interactive Box Plot)
+st.subheader("Price Distribution by Category")
+fig1 = px.box(filtered_df, x='CATEGORY', y='PRICE', title="Price Distribution by Category")
+st.plotly_chart(fig1)
 
-    # Visualization 2: Calendar Insights
-    with col2:
-        st.markdown("### Dates of Availability")
-        calendar_data = data.explode("calendar_dates")
-        calendar_chart = alt.Chart(calendar_data).mark_bar().encode(
-            x=alt.X("calendar_dates:T", title="Dates"),
-            y=alt.Y("count()", title="Number of Listings"),
-            color=alt.Color("availability", legend=alt.Legend(title="Availability"))
-        ).properties(height=400)
-        st.altair_chart(calendar_chart, use_container_width=True)
+# Query 2: Get average price and count of listings by category
+query_avg_price = f"""
+    SELECT CATEGORY, AVG(PRICE) AS AVG_PRICE, COUNT(*) AS LISTINGS_COUNT
+    FROM your_table
+    WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
+    GROUP BY CATEGORY
+"""
+avg_price_df = get_snowflake_data(query_avg_price)
 
-    # Visualization 3: Common Amenities
-    st.markdown("### Most Common Amenities")
-    amenities = data["amenities"].apply(lambda x: x if x else [])
-    all_amenities = [item for sublist in amenities for item in sublist]
-    amenities_df = pd.DataFrame(all_amenities, columns=["Amenity"])
-    top_amenities = amenities_df["Amenity"].value_counts().head(10).reset_index()
-    top_amenities.columns = ["Amenity", "Count"]
+# Display average price and total listings count
+st.subheader("Average Price and Listings Count by Category")
+st.write(avg_price_df)
 
-    amenities_chart = alt.Chart(top_amenities).mark_bar().encode(
-        x=alt.X("Count", title="Count"),
-        y=alt.Y("Amenity", title="Amenity", sort="-x"),
-        color=alt.Color("Count", scale=alt.Scale(scheme="blues"))
-    ).properties(height=400)
-    st.altair_chart(amenities_chart, use_container_width=True)
+# Query 3: Get geographical distribution of listings by category
+query_location = f"""
+    SELECT LAT, LONG, CATEGORY
+    FROM your_table
+    WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
+"""
+location_df = get_snowflake_data(query_location)
 
-# Footer
-st.markdown("---")
-st.markdown("**Built with Streamlit and Snowflake** | © 2024 Your Name")
+# Geographical Distribution: Map
+st.subheader("Listings Location by Latitude and Longitude")
+fig2 = px.scatter_geo(location_df, lat='LAT', lon='LONG', color='CATEGORY',
+                      hover_name='CATEGORY', title="Listings Location on Map")
+st.plotly_chart(fig2)
+
+# Query 4: Get price trend over time by category
+query_price_trend = f"""
+    SELECT TIMESTAMP, CATEGORY, AVG(PRICE) AS AVG_PRICE
+    FROM your_table
+    WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
+    GROUP BY TIMESTAMP, CATEGORY
+    ORDER BY TIMESTAMP
+"""
+price_trend_df = get_snowflake_data(query_price_trend)
+
+# Price Trend Over Time
+st.subheader("Price Trend Over Time by Category")
+fig3 = px.line(price_trend_df, x='TIMESTAMP', y='AVG_PRICE', color='CATEGORY', 
+               title="Price Trend Over Time by Category")
+st.plotly_chart(fig3)
+
+# Query 5: Price range per category
+query_price_range = f"""
+    SELECT CATEGORY, MIN(PRICE) AS MIN_PRICE, MAX(PRICE) AS MAX_PRICE
+    FROM your_table
+    WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
+    GROUP BY CATEGORY
+"""
+price_range_df = get_snowflake_data(query_price_range)
+
+# Price Range per Category
+st.subheader("Price Range per Category")
+st.write(price_range_df)
+
+# Query 6: Number of Listings by Category over Time
+query_listing_trend = f"""
+    SELECT TIMESTAMP, CATEGORY, COUNT(*) AS LISTINGS_COUNT
+    FROM your_table
+    WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
+    GROUP BY TIMESTAMP, CATEGORY
+    ORDER BY TIMESTAMP
+"""
+listing_trend_df = get_snowflake_data(query_listing_trend)
+
+# Listings Count Over Time
+st.subheader("Listing Count Over Time by Category")
+fig4 = px.line(listing_trend_df, x='TIMESTAMP', y='LISTINGS_COUNT', color='CATEGORY', 
+               title="Listing Count Over Time by Category")
+st.plotly_chart(fig4)
+
+# Additional Metrics
+total_listings = len(filtered_df)
+avg_price_all = filtered_df['PRICE'].mean()
+
+st.sidebar.header("Summary Statistics")
+st.sidebar.write(f"Total Listings: {total_listings}")
+st.sidebar.write(f"Average Price (All Listings): ${avg_price_all:,.2f}")
+
+# Optional: Show Filtered Data in Table
+st.subheader("Filtered Data Table")
+st.dataframe(filtered_df, use_container_width=True)
