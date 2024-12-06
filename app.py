@@ -110,7 +110,7 @@ if user_query:
 import altair as alt
 
 # Set up the page configuration
-st.set_page_config(page_title="Airbnb Dashboard", layout="wide")
+#st.set_page_config(page_title="Airbnb Dashboard", layout="wide")
 
 # Fetch data from Snowflake
 @st.cache_data
