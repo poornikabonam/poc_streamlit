@@ -39,7 +39,12 @@ def get_sql_query(user_input):
     {schema}
     Example data:
     {data}
-    Translate this user query into a SQL query, give strictly only the sql query and properly look at how values are in json sometimes:
+    Translate the following user query into a **valid and precise SQL query**. Pay close attention to the schema and data details, including handling JSON fields properly.
+    Guidelines:
+    1. Use SQL syntax compatible with Snowflake.
+    2. Assume the schema and data details below. Always refer to this schema when forming queries.
+    3. For JSON fields, use Snowflake's `:` operator to access nested fields (e.g., `data:'key'` or `data:'key':'nested_key'`).
+    4. **DO NOT GUESS**: If any information is missing or ambiguous, indicate the issue instead of generating invalid SQL.
     {user_input}
     """
     response = openai.chat.completions.create(
