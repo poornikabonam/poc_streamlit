@@ -35,7 +35,7 @@ def get_sql_query(user_input):
     It was peaceful,This is our second trip here. We just love it and planning a third trip. The location is perfect. The place is perfect for us. Meet the host this past weekend and enjoyed talking to him. Can’t wait till our next trip to oak island. Driftwood suite.,This is the perfect spot, great location, has everything you need. We will definitely be back. John was amazing, communication was great. All around just a cozy little spot! I highly recommend!,Wonderful location and place to stay.,Super clean accomodations. Easy access & everything provided to make our stay excellent!,Great place!,Cute and clean spot to get away! We loved spending a long weekend here!	{"avatar":"https://a0.muscache.com/im/pictures/user/dc8bef65-b808-49a0-ab99-a1e5272b2d20.jpg?aki_policy=profile_x_medium","features":[{"name":"Response rate","value":"100%"},{"name":"Response time","value":"within an hour"}],"name":"Hosted by John","url":"https://www.airbnb.ru/contact_host/48682162/send_message"}
     """
     prompt = f"""
-    Given the following database schema:
+    You are a Snowflake SQL expert. Generate a Snowflake-compatible SQL query based on the following schema:
     {schema}
     Example data:
     {data}
