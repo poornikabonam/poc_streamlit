@@ -17,7 +17,7 @@ def get_snowflake_data(query):
     cursor = st.connection("snowflake").cursor()
     cursor.execute(query)
     df = cursor.fetch_pandas_all()  # Fetches data as a Pandas DataFrame
-    conn.close()
+   
     
     return df
 
