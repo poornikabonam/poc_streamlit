@@ -124,11 +124,11 @@ st.plotly_chart(fig4)
 
 # Additional Metrics
 total_listings = len(filtered_df)
-avg_price_all = filtered_df['PRICE'].mean()
+#avg_price_all = filtered_df['PRICE'].mean()
 
 st.sidebar.header("Summary Statistics")
 st.sidebar.write(f"Total Listings: {total_listings}")
-st.sidebar.write(f"Average Price (All Listings): ${avg_price_all:,.2f}")
+#st.sidebar.write(f"Average Price (All Listings): ${avg_price_all:,.2f}")
 
 # Optional: Show Filtered Data in Table
 st.subheader("Filtered Data Table")
