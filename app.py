@@ -13,12 +13,11 @@ import altair as alt
 @st.cache_data
 def fetch_data(query):
     # Use Streamlit's connection method to connect to Snowflake
-    with st.connection("snowflake") as conn:
-        cursor = conn.cursor()
-        cursor.execute(query)
-        data = cursor.fetchall()
-        columns = [desc[0] for desc in cursor.description]
-        return pd.DataFrame(data, columns=columns)
+    cursor = st.connection("snowflake").cursor()
+    cursor.execute(query)
+    data = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+    return pd.DataFrame(data, columns=columns)
 
 # Query Airbnb data
 def get_airbnb_data(date_range=None, availability=None):
