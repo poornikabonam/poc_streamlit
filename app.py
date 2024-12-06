@@ -52,7 +52,7 @@ st.plotly_chart(fig1)
 
 # Query 2: Get average price and count of listings by category
 query_avg_price = f"""
-    SELECT CATEGORY, AVG(PRICE:value) AS AVG_PRICE, COUNT(*) AS LISTINGS_COUNT
+    SELECT CATEGORY, AVG(PARSE_JSON(PRICE):value::FLOAT AS PRICE_VALUE) AS AVG_PRICE, COUNT(*) AS LISTINGS_COUNT
     FROM AIRBNB_PROPERTIES_INFORMATION
     WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
     GROUP BY CATEGORY
