@@ -39,7 +39,7 @@ def get_sql_query(user_input):
     {schema}
     Example data:
     {data}
-    Translate the following user query into a **valid and precise SQL query**. Pay close attention to the schema and data details, including handling JSON fields properly.
+    Translate the following user query into a **valid and precise SQL query**. Give only sql query.Pay close attention to the schema and data details, including handling JSON fields properly.
     Guidelines:
     1. Use SQL syntax compatible with Snowflake.
     2. Assume the schema and data details below. Always refer to this schema when forming queries.
