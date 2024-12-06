@@ -79,7 +79,7 @@ st.plotly_chart(fig2)
 
 # Query 4: Get price trend over time by category
 query_price_trend = f"""
-    SELECT TIMESTAMP, CATEGORY, AVG(PRICE) AS AVG_PRICE
+    SELECT TIMESTAMP, CATEGORY, AVG(PARSE_JSON(PRICE):value::FLOAT) AS AVG_PRICE
     FROM AIRBNB_PROPERTIES_INFORMATION
     WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
     GROUP BY TIMESTAMP, CATEGORY
@@ -95,7 +95,7 @@ st.plotly_chart(fig3)
 
 # Query 5: Price range per category
 query_price_range = f"""
-    SELECT CATEGORY, MIN(PRICE) AS MIN_PRICE, MAX(PRICE) AS MAX_PRICE
+    SELECT CATEGORY, MIN(PARSE_JSON(PRICE):value::FLOAT) AS MIN_PRICE, MAX(PARSE_JSON(PRICE):value::FLOAT) AS MAX_PRICE
     FROM AIRBNB_PROPERTIES_INFORMATION
     WHERE TIMESTAMP BETWEEN '{start_date}' AND '{end_date}'
     GROUP BY CATEGORY
