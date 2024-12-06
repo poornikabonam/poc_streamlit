@@ -7,3 +7,4 @@ pandas
 openai
 plotly
 python-dotenv
+altair
