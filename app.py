@@ -43,8 +43,7 @@ def get_sql_query(user_input):
     Guidelines:
     1. Use SQL syntax compatible with Snowflake.
     2. Assume the schema and data details below. Always refer to this schema when forming queries.
-    3. For JSON fields, use Snowflake's `:` operator to access nested fields (e.g., `data:'key'` or `data:'key':'nested_key'`).
-    4. **DO NOT GUESS**: If any information is missing or ambiguous, indicate the issue instead of generating invalid SQL.
+    3. **DO NOT GUESS**: If any information is missing or ambiguous, indicate the issue instead of generating invalid SQL.
     {user_input}
     """
     response = openai.chat.completions.create(
