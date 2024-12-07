@@ -142,7 +142,7 @@ def load_data():
     
     # Process amenities
     df['amenities_list'] = df['AMENITIES'].apply(lambda x: 
-        [item['name'] for item in parse_json_field(x)] if parse_json_field(x) else []
+        [item[items['name']] for item in parse_json_field(x)] if parse_json_field(x) else []
     )
     
     # Process availability dates
