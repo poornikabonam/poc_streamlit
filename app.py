@@ -189,22 +189,25 @@ with tabs[0]:
 
     # Availability trends
     st.subheader("Availability Trends")
-    all_dates = []
-    for dates in df['AVAILABLE_DATES'].apply(process_available_dates):
-        all_dates.extend(dates)
+all_dates = []
+for dates in df['AVAILABLE_DATES'].apply(process_available_dates):
+    all_dates.extend(dates)
+
+if all_dates:
+    availability_df = pd.DataFrame(all_dates, columns=['date'])
+    # Handle different date formats
+    availability_df['date'] = pd.to_datetime(availability_df['date'], format='mixed')
+    availability_counts = availability_df['date'].value_counts().reset_index()
+    availability_counts.columns = ['date', 'count']
+    availability_counts = availability_counts.sort_values('date')
     
-    if all_dates:
-        availability_df = pd.DataFrame(all_dates, columns=['date'])
-        availability_counts = availability_df['date'].value_counts().reset_index()
-        availability_counts.columns = ['date', 'count']
-        availability_counts['date'] = pd.to_datetime(availability_counts['date'])
-        availability_counts = availability_counts.sort_values('date')
-        
-        fig = px.line(availability_counts, 
-                     x='date', 
-                     y='count',
-                     title='Number of Available Properties by Date')
-        st.plotly_chart(fig, use_container_width=True)
+    fig = px.line(availability_counts, 
+                 x='date', 
+                 y='count',
+                 title='Number of Available Properties by Date')
+    fig.update_xaxes(title='Date')
+    fig.update_yaxes(title='Number of Available Properties')
+    st.plotly_chart(fig, use_container_width=True)
 
 # Location Tab
 with tabs[1]:
