@@ -127,7 +127,7 @@ def parse_dates(dates_str):
 # Load and process data
 @st.cache_data
 def load_data():
-    df = execute_sql("SELECT * FROM AIRBNB_LISTINGS")
+    df = execute_sql("SELECT * FROM AIRBNB_PROPERTIES_INFORMATION")
     
     # Process prices
     df['price_value'] = df['PRICE'].apply(parse_price)
