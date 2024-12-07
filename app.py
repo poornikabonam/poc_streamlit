@@ -7,24 +7,16 @@ from datetime import datetime
 import json
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
-import altair as alt
 import pydeck as pdk
-from streamlit_lottie import st_lottie
-import requests
-from streamlit_folium import st_folium
-import folium
-from PIL import Image
-import ast
-import re
 
-# Page configuration with custom theme
+# Page configuration
 st.set_page_config(
-    page_title="🏠 Ultimate Airbnb Analytics",
+    page_title="🏠 Stays Analytics Dashboard",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# Custom CSS
 st.markdown("""
 <style>
     .main {
@@ -36,27 +28,10 @@ st.markdown("""
         border-radius: 20px;
         padding: 10px 24px;
         border: none;
-        transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
-        background-color: #dd2d50;
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(255, 56, 92, 0.3);
     }
     div[data-testid="stMetricValue"] {
         font-size: 28px;
         color: #ff385c;
-    }
-    .metric-card {
-        background-color: white;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
-    }
-    .metric-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
     }
     .plot-container {
         background-color: white;
@@ -65,23 +40,10 @@ st.markdown("""
         margin: 10px 0;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-    .custom-tab {
-        background-color: white;
-        padding: 20px;
-        border-radius: 10px;
-        margin: 10px 0;
-    }
 </style>
 """, unsafe_allow_html=True)
 
-# Load Lottie animation
-@st.cache_data
-def load_lottieurl(url):
-    r = requests.get(url)
-    return r.json() if r.status_code == 200 else None
-
 # Function to execute SQL queries
-@st.cache_data
 def execute_sql(query):
     cursor = st.connection("snowflake").cursor()
     cursor.execute(query)
@@ -90,23 +52,6 @@ def execute_sql(query):
     return pd.DataFrame(result, columns=columns)
 
 # Data processing functions
-def parse_json_field(field):
-    if isinstance(field, str):
-        try:
-            return json.loads(field.replace("'", '"'))
-        except:
-            return None
-    return None
-
-def extract_rating(rating_dict, key):
-    try:
-        if isinstance(rating_dict, list):
-            rating = next((item['value'] for item in rating_dict if item['name'] == key), None)
-            return float(str(rating).replace(',', '.')) if rating else None
-    except:
-        return None
-    return None
-
 def parse_price(price_str):
     if isinstance(price_str, str):
         try:
@@ -116,15 +61,20 @@ def parse_price(price_str):
             return None
     return None
 
-def parse_dates(dates_str):
-    if isinstance(dates_str, str):
+def parse_ratings(rating_str):
+    if isinstance(rating_str, str):
         try:
-            return dates_str.split(',')
+            ratings = json.loads(rating_str.replace("'", '"'))
+            rating_dict = {}
+            for rating in ratings:
+                value = rating.get('value', '0').replace(',', '.')
+                rating_dict[rating['name'].lower()] = float(value)
+            return rating_dict
         except:
-            return []
-    return []
+            return {}
+    return {}
 
-def parse_amenities_with_groups(amenities_str):
+def parse_amenities(amenities_str):
     if isinstance(amenities_str, str):
         try:
             amenities_dict = json.loads(amenities_str.replace("'", '"'))
@@ -145,102 +95,134 @@ def parse_amenities_with_groups(amenities_str):
         except:
             return {}
     return {}
-    
+
+def process_available_dates(dates_str):
+    if isinstance(dates_str, str):
+        return dates_str.split(',')
+    return []
+
 # Load and process data
 @st.cache_data
 def load_data():
-    df = execute_sql("SELECT * FROM AIRBNB_PROPERTIES_INFORMATION where category='Stays'")
+    # Query only stays listings
+    df = execute_sql("SELECT * FROM AIRBNB_PROPERTIES_INFORMATION WHERE CATEGORY = 'Stays'")
     
     # Process prices
     df['price_value'] = df['PRICE'].apply(parse_price)
     
     # Process ratings
-    df['ratings_dict'] = df['CATEGORY_RATING'].apply(parse_json_field)
-    rating_types = ['Cleanliness', 'Accuracy', 'Communication', 'Location', 'Check-in', 'Value']
+    df['ratings'] = df['CATEGORY_RATING'].apply(parse_ratings)
+    rating_types = ['cleanliness', 'accuracy', 'communication', 'location', 'check-in', 'value']
     for rating_type in rating_types:
-        df[f'rating_{rating_type.lower()}'] = df['ratings_dict'].apply(
-            lambda x: extract_rating(x, rating_type)
-        )
+        df[f'rating_{rating_type}'] = df['ratings'].apply(lambda x: x.get(rating_type.lower(), None))
     
+    # Process amenities
+    df['amenities_dict'] = df['AMENITIES'].apply(parse_amenities)
+    
+    # Process details
+    def extract_details(details_str):
+        if pd.isna(details_str):
+            return None, None, None
+        parts = str(details_str).split(',')
+        guests = rooms = beds = None
+        for part in parts:
+            if 'guest' in part.lower():
+                guests = int(''.join(filter(str.isdigit, part)) or 0)
+            elif 'bedroom' in part.lower():
+                rooms = int(''.join(filter(str.isdigit, part)) or 0)
+            elif 'bed' in part.lower() and 'bedroom' not in part.lower():
+                beds = int(''.join(filter(str.isdigit, part)) or 0)
+        return guests, rooms, beds
 
-    # Replace the existing amenities processing line with:
-    df['amenities_dict'] = df['AMENITIES'].apply(parse_amenities_with_groups)
-    
-    # Process availability dates
-    df['available_dates_list'] = df['AVAILABLE_DATES'].apply(parse_dates)
-    df['availability_count'] = df['available_dates_list'].apply(len)
-    
-    # Process images
-    df['image_list'] = df['IMAGES'].apply(lambda x: 
-        x.split(',') if isinstance(x, str) else []
+    df[['guests', 'bedrooms', 'beds']] = pd.DataFrame(
+        df['DETAILS'].apply(extract_details).tolist(),
+        columns=['guests', 'bedrooms', 'beds']
     )
-    df['image_count'] = df['image_list'].apply(len)
     
     return df
 
 # Load data
 df = load_data()
 
-# Header section
-col1, col2 = st.columns([3, 1])
-with col1:
-    st.title("🏠 Ultimate Airbnb Analytics Dashboard")
-    st.markdown("Comprehensive analysis of all Airbnb listings with advanced insights")
+# Header
+st.title("🏠 Airbnb Stays Analytics Dashboard")
+st.markdown("Comprehensive analysis of Airbnb Stays listings")
 
-# Main metrics
+# Main metrics row
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    with st.container():
-        st.metric("Total Listings", f"{len(df):,}")
+    st.metric("Total Stays Listed", f"{len(df):,}")
 with col2:
-    with st.container():
-        st.metric("Average Price", f"${df['price_value'].mean():,.2f}")
+    avg_price = df['price_value'].mean()
+    st.metric("Average Price", f"${avg_price:.2f}")
 with col3:
-    with st.container():
-        st.metric("Average Rating", f"{df['rating_cleanliness'].mean():.2f}⭐")
+    avg_rating = df['rating_cleanliness'].mean()
+    st.metric("Average Rating", f"{avg_rating:.2f}⭐")
 with col4:
-    with st.container():
-        st.metric("Available Properties", 
-                 f"{df[df['availability_count'] > 0].shape[0]:,}")
+    pet_friendly = (df['PETS_ALLOWED'] == True).sum()
+    st.metric("Pet Friendly", f"{pet_friendly:,}")
 
 # Create tabs for different analyses
-tabs = st.tabs(["📊 Overview", "🗺️ Location Analysis", "💰 Pricing Insights", 
-                "⭐ Ratings & Reviews", "🏠 Property Details"])
+tabs = st.tabs(["📊 Overview", "🗺️ Location", "💰 Pricing", "⭐ Ratings", "🏠 Details"])
 
 # Overview Tab
 with tabs[0]:
-    st.subheader("Property Distribution")
+    col1, col2 = st.columns(2)
     
-    # Property types distribution
-    fig = px.pie(df, names='CATEGORY', title='Property Types Distribution')
-    st.plotly_chart(fig, use_container_width=True)
+    with col1:
+        # Guest capacity distribution
+        valid_guests = df[df['guests'].notna() & (df['guests'] > 0)]
+        fig = px.histogram(valid_guests, 
+                          x='guests',
+                          title='Distribution of Guest Capacity',
+                          labels={'guests': 'Number of Guests'})
+        st.plotly_chart(fig, use_container_width=True)
     
+    with col2:
+        # Bedroom distribution
+        valid_bedrooms = df[df['bedrooms'].notna() & (df['bedrooms'] > 0)]
+        fig = px.histogram(valid_bedrooms,
+                          x='bedrooms',
+                          title='Distribution of Bedrooms',
+                          labels={'bedrooms': 'Number of Bedrooms'})
+        st.plotly_chart(fig, use_container_width=True)
+
     # Availability trends
     st.subheader("Availability Trends")
-    availability_df = pd.DataFrame({
-        'date': df['available_dates_list'].explode()
-    }).value_counts().reset_index()
-    fig = px.line(availability_df, x='date', y=0, 
-                  title='Number of Available Properties by Date')
-    st.plotly_chart(fig, use_container_width=True)
-
-# Location Analysis Tab
-with tabs[1]:
-    st.subheader("Geographical Distribution")
+    all_dates = []
+    for dates in df['AVAILABLE_DATES'].apply(process_available_dates):
+        all_dates.extend(dates)
     
-    # 3D Map visualization
+    if all_dates:
+        availability_df = pd.DataFrame(all_dates, columns=['date'])
+        availability_counts = availability_df['date'].value_counts().reset_index()
+        availability_counts.columns = ['date', 'count']
+        availability_counts['date'] = pd.to_datetime(availability_counts['date'])
+        availability_counts = availability_counts.sort_values('date')
+        
+        fig = px.line(availability_counts, 
+                     x='date', 
+                     y='count',
+                     title='Number of Available Properties by Date')
+        st.plotly_chart(fig, use_container_width=True)
+
+# Location Tab
+with tabs[1]:
+    st.subheader("Geographical Distribution of Stays")
+    valid_locations = df[df['LAT'].notna() & df['LONG'].notna()]
+    
     st.pydeck_chart(pdk.Deck(
         map_style='mapbox://styles/mapbox/light-v9',
         initial_view_state=pdk.ViewState(
-            latitude=df['LAT'].mean(),
-            longitude=df['LONG'].mean(),
+            latitude=valid_locations['LAT'].mean(),
+            longitude=valid_locations['LONG'].mean(),
             zoom=11,
             pitch=50,
         ),
         layers=[
             pdk.Layer(
                 'HexagonLayer',
-                data=df,
+                data=valid_locations,
                 get_position=['LONG', 'LAT'],
                 radius=200,
                 elevation_scale=4,
@@ -250,103 +232,101 @@ with tabs[1]:
             ),
         ]
     ))
-    
-    # Price heatmap by location
-    st.subheader("Price Distribution by Location")
-    fig = px.scatter_mapbox(df, 
-                           lat='LAT', 
-                           lon='LONG', 
-                           color='price_value',
-                           size='rating_cleanliness',
-                           hover_name='NAME',
-                           zoom=10)
-    fig.update_layout(mapbox_style="carto-positron")
-    st.plotly_chart(fig, use_container_width=True)
 
-# Pricing Insights Tab
+# Pricing Tab
 with tabs[2]:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("Price Distribution")
-        fig = px.histogram(df, x='price_value', nbins=50,
-                          title='Price Distribution')
+        # Price distribution
+        valid_prices = df[df['price_value'].notna()]
+        fig = px.histogram(valid_prices,
+                          x='price_value',
+                          title='Price Distribution',
+                          labels={'price_value': 'Price ($)'})
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        st.subheader("Price vs Rating")
-        fig = px.scatter(df, 
-                        x='price_value', 
-                        y='rating_value',
-                        color='rating_cleanliness',
-                        size='availability_count',
-                        hover_name='NAME')
+        # Price vs Guests
+        valid_data = df[df['price_value'].notna() & df['guests'].notna() & df['rating_value'].notna()]
+        fig = px.scatter(valid_data,
+                        x='guests',
+                        y='price_value',
+                        color='rating_value',
+                        title='Price vs Guest Capacity',
+                        labels={'guests': 'Number of Guests',
+                               'price_value': 'Price ($)',
+                               'rating_value': 'Rating'})
         st.plotly_chart(fig, use_container_width=True)
-    
-    # Price trends over time
-    st.subheader("Price Trends")
-    fig = px.box(df, 
-                 x=pd.to_datetime(df['TIMESTAMP']).dt.month, 
-                 y='price_value',
-                 title='Price Distribution by Month')
-    st.plotly_chart(fig, use_container_width=True)
 
-# Ratings & Reviews Tab
+# Ratings Tab
 with tabs[3]:
-    col1, col2 = st.columns(2)
+    # Ratings breakdown
+    rating_cols = ['rating_cleanliness', 'rating_accuracy', 
+                  'rating_communication', 'rating_location', 
+                  'rating_check_in', 'rating_value']
+    valid_ratings = df[rating_cols].mean()
     
-    with col1:
-        # Ratings breakdown
-        st.subheader("Ratings Breakdown")
-        rating_cols = ['rating_cleanliness', 'rating_accuracy', 
-                      'rating_communication', 'rating_location', 
-                      'rating_check_in', 'rating_value']
-        rating_means = df[rating_cols].mean()
-        fig = go.Figure(data=[
-            go.Bar(x=rating_means.index, y=rating_means.values)
-        ])
-        st.plotly_chart(fig, use_container_width=True)
+    fig = go.Figure(data=[
+        go.Bar(x=valid_ratings.index, 
+               y=valid_ratings.values,
+               marker_color='#ff385c')
+    ])
+    fig.update_layout(title='Average Ratings by Category')
+    st.plotly_chart(fig, use_container_width=True)
     
-    with col2:
-        # Reviews wordcloud
-        st.subheader("Common Review Terms")
-        all_reviews = ' '.join(df['REVIEWS'].dropna().astype(str))
-        wordcloud = WordCloud(width=800, height=400, 
-                            background_color='white').generate(all_reviews)
-        fig, ax = plt.subplots()
-        ax.imshow(wordcloud, interpolation='bilinear')
-        ax.axis('off')
-        st.pyplot(fig)
+    # Reviews wordcloud
+    if 'REVIEWS' in df.columns:
+        st.subheader("Common Themes in Reviews")
+        reviews_text = ' '.join(df['REVIEWS'].dropna().astype(str))
+        if reviews_text.strip():
+            wordcloud = WordCloud(width=800, height=400,
+                                background_color='white').generate(reviews_text)
+            fig, ax = plt.subplots()
+            ax.imshow(wordcloud, interpolation='bilinear')
+            ax.axis('off')
+            st.pyplot(fig)
 
-# Property Details Tab
+# Details Tab
 with tabs[4]:
     # Amenities analysis
-    st.subheader("Popular Amenities")
-    all_amenities = [item for sublist in df['amenities_list'].dropna() 
-                    for item in sublist]
-    amenities_count = pd.Series(all_amenities).value_counts().head(20)
-    fig = px.bar(amenities_count, title='Top 20 Amenities')
-    st.plotly_chart(fig, use_container_width=True)
+    st.subheader("Amenities Analysis")
     
-    # Property details table
-    st.subheader("Property Details")
-    cols_to_show = ['NAME', 'CATEGORY', 'price_value', 'rating_cleanliness', 
-                    'availability_count', 'image_count']
-    st.dataframe(df[cols_to_show].head(10))
+    # Flatten amenities for counting
+    all_amenities = []
+    for amenities_dict in df['amenities_dict']:
+        for group, amenities in amenities_dict.items():
+            all_amenities.extend(amenities)
+    
+    if all_amenities:
+        amenities_count = pd.Series(all_amenities).value_counts().head(15)
+        fig = px.bar(amenities_count,
+                     title='Top 15 Most Common Amenities',
+                     labels={'index': 'Amenity', 'value': 'Count'})
+        st.plotly_chart(fig, use_container_width=True)
 
 # Sidebar filters
 with st.sidebar:
     st.header("Filters")
     
-    # Price range filter
+    valid_prices = df[df['price_value'].notna()]
     price_range = st.slider(
         "Price Range ($)",
-        min_value=int(df['price_value'].min()),
-        max_value=int(df['price_value'].max()),
-        value=(int(df['price_value'].min()), int(df['price_value'].max()))
+        min_value=int(valid_prices['price_value'].min()),
+        max_value=int(valid_prices['price_value'].max()),
+        value=(int(valid_prices['price_value'].min()),
+               int(valid_prices['price_value'].max()))
     )
     
-    # Rating filter
+    valid_guests = df[df['guests'].notna()]
+    guest_range = st.slider(
+        "Guest Capacity",
+        min_value=int(valid_guests['guests'].min()),
+        max_value=int(valid_guests['guests'].max()),
+        value=(int(valid_guests['guests'].min()),
+               int(valid_guests['guests'].max()))
+    )
+    
     min_rating = st.slider(
         "Minimum Rating",
         min_value=0.0,
@@ -354,44 +334,29 @@ with st.sidebar:
         value=0.0
     )
     
-    # Property type filter
-    property_types = st.multiselect(
-        "Property Types",
-        options=df['CATEGORY'].unique()
-    )
+    pet_friendly = st.checkbox("Pet Friendly Only")
     
-    # Amenities filter
-    all_amenities = list(set([item for sublist in df['amenities_list'].dropna() 
-                            for item in sublist]))
-    selected_amenities = st.multiselect(
-        "Amenities",
-        options=sorted(all_amenities)
-    )
-    
-    # Apply filters button
     apply_filters = st.button("Apply Filters")
 
-# Apply filters if button is clicked
+# Apply filters
 if apply_filters:
     filtered_df = df[
         (df['price_value'] >= price_range[0]) &
         (df['price_value'] <= price_range[1]) &
+        (df['guests'] >= guest_range[0]) &
+        (df['guests'] <= guest_range[1]) &
         (df['rating_cleanliness'] >= min_rating)
     ]
     
-    if property_types:
-        filtered_df = filtered_df[filtered_df['CATEGORY'].isin(property_types)]
+    if pet_friendly:
+        filtered_df = filtered_df[filtered_df['PETS_ALLOWED'] == True]
     
-    if selected_amenities:
-        filtered_df = filtered_df[filtered_df['amenities_list'].apply(
-            lambda x: all(amenity in x for amenity in selected_amenities)
-        )]
-    
-    st.success(f"Found {len(filtered_df)} properties matching your criteria!")
+    st.success(f"Found {len(filtered_df)} stays matching your criteria!")
     
     # Show filtered results
     st.dataframe(
-        filtered_df[['NAME', 'CATEGORY', 'price_value', 'rating_cleanliness']],
+        filtered_df[['NAME', 'price_value', 'guests', 'bedrooms', 
+                    'rating_cleanliness', 'PETS_ALLOWED']].head(10),
         use_container_width=True
     )
 
