@@ -1,8 +1,8 @@
-streamlit==1.28.0
+streamlit
 pandas==2.1.1
 plotly==5.17.0
 numpy==1.24.3
-wordcloud==1.9.2
+wordcloud
 matplotlib==3.8.0
 snowflake-connector-python==3.2.0
 altair==5.1.2
