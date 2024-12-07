@@ -212,29 +212,53 @@ if all_dates:
 # Location Tab
 with tabs[1]:
     st.subheader("Geographical Distribution of Stays")
-    valid_locations = df[df['LAT'].notna() & df['LONG'].notna()]
     
-    st.pydeck_chart(pdk.Deck(
+    # Prepare location data
+    valid_locations = df[df['LAT'].notna() & df['LONG'].notna()].copy()
+    valid_locations['LAT'] = valid_locations['LAT'].astype(float)
+    valid_locations['LONG'] = valid_locations['LONG'].astype(float)
+    
+    # Create a simple DataFrame for the layer
+    map_data = valid_locations[['LAT', 'LONG', 'price_value']].copy()
+    
+    view_state = pdk.ViewState(
+        latitude=float(valid_locations['LAT'].mean()),
+        longitude=float(valid_locations['LONG'].mean()),
+        zoom=11,
+        pitch=50
+    )
+
+    # Create the layer
+    hexagon_layer = pdk.Layer(
+        'HexagonLayer',
+        data=map_data,
+        get_position=['LONG', 'LAT'],
+        radius=200,
+        elevation_scale=4,
+        elevation_range=[0, 1000],
+        pickable=True,
+        extruded=True,
+    )
+
+    # Create and display the deck
+    deck = pdk.Deck(
         map_style='mapbox://styles/mapbox/light-v9',
-        initial_view_state=pdk.ViewState(
-            latitude=valid_locations['LAT'].mean(),
-            longitude=valid_locations['LONG'].mean(),
-            zoom=11,
-            pitch=50,
-        ),
-        layers=[
-            pdk.Layer(
-                'HexagonLayer',
-                data=valid_locations,
-                get_position=['LONG', 'LAT'],
-                radius=200,
-                elevation_scale=4,
-                elevation_range=[0, 1000],
-                pickable=True,
-                extruded=True,
-            ),
-        ]
-    ))
+        initial_view_state=view_state,
+        layers=[hexagon_layer]
+    )
+    
+    st.pydeck_chart(deck)
+    
+    # Alternative map using Plotly for backup
+    fig = px.scatter_mapbox(valid_locations,
+                           lat='LAT',
+                           lon='LONG',
+                           color='price_value',
+                           size_max=15,
+                           zoom=10,
+                           title='Property Locations by Price')
+    fig.update_layout(mapbox_style="carto-positron")
+    st.plotly_chart(fig, use_container_width=True)
 
 # Pricing Tab
 with tabs[2]:
