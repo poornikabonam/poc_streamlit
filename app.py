@@ -21,7 +21,7 @@ def execute_sql(query):
 
 # Load data from Snowflake
 def get_snowflake_data():
-    query = "SELECT * FROM airbnb_listings_data"  # Replace with your table name
+    query = "SELECT * FROM AIRBNB_PROPERTIES_INFORMATION"  # Replace with your table name
     df = execute_sql(query)
     return df
 
