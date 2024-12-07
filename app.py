@@ -124,6 +124,28 @@ def parse_dates(dates_str):
             return []
     return []
 
+def parse_amenities_with_groups(amenities_str):
+    if isinstance(amenities_str, str):
+        try:
+            amenities_dict = json.loads(amenities_str.replace("'", '"'))
+            amenities_by_group = {}
+            for group in amenities_dict:
+                group_name = group.get('group_name', 'Other')
+                if 'items' in group:
+                    amenities_by_group[group_name] = []
+                    for item in group['items']:
+                        amenity_name = item.get('name', '')
+                        amenity_value = item.get('value', '')
+                        if amenity_value:
+                            amenities_by_group[group_name].append(
+                                f"{amenity_name} ({amenity_value})")
+                        else:
+                            amenities_by_group[group_name].append(amenity_name)
+            return amenities_by_group
+        except:
+            return {}
+    return {}
+    
 # Load and process data
 @st.cache_data
 def load_data():
@@ -140,10 +162,9 @@ def load_data():
             lambda x: extract_rating(x, rating_type)
         )
     
-    # Process amenities
-    df['amenities_list'] = df['AMENITIES'].apply(lambda x: 
-        [item[items['name']] for item in parse_json_field(x)] if parse_json_field(x) else []
-    )
+
+    # Replace the existing amenities processing line with:
+    df['amenities_dict'] = df['AMENITIES'].apply(parse_amenities_with_groups)
     
     # Process availability dates
     df['available_dates_list'] = df['AVAILABLE_DATES'].apply(parse_dates)
