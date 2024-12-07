@@ -68,7 +68,9 @@ def parse_ratings(rating_str):
             rating_dict = {}
             for rating in ratings:
                 value = rating.get('value', '0').replace(',', '.')
-                rating_dict[rating['name'].lower()] = float(value)
+                # Convert the name to match our column naming convention
+                name = rating['name'].lower().replace('-', '_')
+                rating_dict[name] = float(value)
             return rating_dict
         except:
             return {}
@@ -112,9 +114,19 @@ def load_data():
     
     # Process ratings
     df['ratings'] = df['CATEGORY_RATING'].apply(parse_ratings)
-    rating_types = ['cleanliness', 'accuracy', 'communication', 'location', 'check-in', 'value']
-    for rating_type in rating_types:
-        df[f'rating_{rating_type}'] = df['ratings'].apply(lambda x: x.get(rating_type.lower(), None))
+    
+    # Use consistent column names that match the data
+    rating_cols = {
+        'cleanliness': 'rating_cleanliness',
+        'accuracy': 'rating_accuracy',
+        'communication': 'rating_communication',
+        'location': 'rating_location',
+        'check-in': 'rating_check_in',  # Note the hyphen in the original data
+        'value': 'rating_value'
+    }
+    
+    for original, col_name in rating_cols.items():
+        df[col_name] = df['ratings'].apply(lambda x: x.get(original.lower(), None))
     
     # Process amenities
     df['amenities_dict'] = df['AMENITIES'].apply(parse_amenities)
@@ -289,30 +301,38 @@ with tabs[2]:
 # Ratings Tab
 with tabs[3]:
     # Ratings breakdown
-    rating_cols = ['rating_cleanliness', 'rating_accuracy', 
-                  'rating_communication', 'rating_location', 
-                  'rating_check_in', 'rating_value']
-    valid_ratings = df[rating_cols].mean()
+    rating_cols = [
+        'rating_cleanliness',
+        'rating_accuracy',
+        'rating_communication',
+        'rating_location',
+        'rating_check_in',
+        'rating_value'
+    ]
     
-    fig = go.Figure(data=[
-        go.Bar(x=valid_ratings.index, 
-               y=valid_ratings.values,
-               marker_color='#ff385c')
-    ])
-    fig.update_layout(title='Average Ratings by Category')
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Reviews wordcloud
-    if 'REVIEWS' in df.columns:
-        st.subheader("Common Themes in Reviews")
-        reviews_text = ' '.join(df['REVIEWS'].dropna().astype(str))
-        if reviews_text.strip():
-            wordcloud = WordCloud(width=800, height=400,
-                                background_color='white').generate(reviews_text)
-            fig, ax = plt.subplots()
-            ax.imshow(wordcloud, interpolation='bilinear')
-            ax.axis('off')
-            st.pyplot(fig)
+    # Make sure all columns exist and handle missing ones
+    available_cols = [col for col in rating_cols if col in df.columns]
+    if available_cols:
+        valid_ratings = df[available_cols].mean()
+        
+        # Create readable labels
+        labels = {col: col.replace('rating_', '').title() for col in available_cols}
+        
+        fig = go.Figure(data=[
+            go.Bar(
+                x=[labels[col] for col in available_cols],
+                y=valid_ratings.values,
+                marker_color='#ff385c'
+            )
+        ])
+        fig.update_layout(
+            title='Average Ratings by Category',
+            xaxis_title='Rating Category',
+            yaxis_title='Average Score'
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("No rating data available")
 
 # Details Tab
 with tabs[4]:
