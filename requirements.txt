@@ -8,3 +8,4 @@ openai
 plotly
 python-dotenv
 altair
+json
