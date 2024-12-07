@@ -32,7 +32,7 @@ def preprocess_data(data):
     
     # Expanding 'AMENITIES' into individual rows
     amenities_df = data.explode('AMENITIES').reset_index(drop=True)
-    amenities_df['AMENITY'] = amenities_df['AMENITIES'].apply(lambda x: x['NAME'] if isinstance(x, dict) else None)
+    amenities_df['AMENITY'] = amenities_df['AMENITIES'].apply(lambda x: x['name'] if isinstance(x, dict) else None)
     amenities_df.drop(columns=['AMENITIES'], inplace=True)
     
     # Splitting Available Dates to list of dates
