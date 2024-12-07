@@ -47,7 +47,7 @@ data = get_snowflake_data()
 data, amenities_df = preprocess_data(data)
 
 # Streamlit UI Customizations
-st.set_page_config(page_title="Airbnb Listings Dashboard", layout="wide", page_icon="🏠")
+#st.set_page_config(page_title="Airbnb Listings Dashboard", layout="wide", page_icon="🏠")
 
 # Custom CSS Styling
 st.markdown("""
