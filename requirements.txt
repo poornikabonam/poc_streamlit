@@ -12,4 +12,4 @@ streamlit-card
 streamlit-folium
 folium
 pydeck
-
+pillow
