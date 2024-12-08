@@ -407,9 +407,4 @@ if apply_filters:
         use_container_width=True
     )
 
-# Footer
-st.markdown("""
-<div style='text-align: center; color: #666; padding: 20px;'>
-    Powered by Streamlit & Snowflake | Created with ❤️
-</div>
-""", unsafe_allow_html=True)
+
