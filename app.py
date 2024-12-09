@@ -267,7 +267,7 @@ with tabs[1]:
                            lon='LONG',
                            color='price_value',
                            size_max=15,
-                           zoom=10,
+                           zoom=80,
                            title='Property Locations by Price')
     fig.update_layout(mapbox_style="carto-positron")
     st.plotly_chart(fig, use_container_width=True)
