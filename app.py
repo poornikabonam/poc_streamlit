@@ -119,83 +119,7 @@ def execute_llm_query(prompt, context=None):
     result = session.sql(llm_query).collect()
     return result[0]['RESPONSE'] if result else None
 
-# Add this section to your dashboard
-st.sidebar.markdown("---")
-st.sidebar.header("💬 Natural Language Analytics")
 
-user_query = st.sidebar.text_area("Ask questions about the data:")
-
-if user_query:
-    # Provide context about available data
-    context = f"""
-    Available data includes Airbnb listings with:
-    - Prices ranging from ${df['price_value'].min():.2f} to ${df['price_value'].max():.2f}
-    - {len(df)} total listings
-    - Average rating of {df['rating_cleanliness'].mean():.2f}
-    - Locations across different areas
-    """
-    
-    response = execute_llm_query(user_query, context)
-    
-    if "create visualization" in user_query.lower() or "show graph" in user_query.lower():
-        # Handle visualization requests
-        viz_query = f"""
-        SELECT CORTEX_COMPLETE(
-            'Convert this request to a Python visualization code using plotly: {user_query}',
-            OBJECT_CONSTRUCT(
-                'temperature', 0.2,
-                'context', 'Using plotly and the dataframe df'
-            )
-        ) as viz_code
-        """
-        session = get_snowflake_session()
-        viz_code = session.sql(viz_query).collect()[0]['VIZ_CODE']
-        
-        try:
-            exec(viz_code)
-            st.plotly_chart(fig, use_container_width=True)
-        except Exception as e:
-            st.error(f"Couldn't create visualization: {str(e)}")
-    
-    # Display LLM response
-    st.sidebar.markdown("### Response:")
-    st.sidebar.write(response)
-
-    # Add sentiment analysis for reviews
-    if "sentiment" in user_query.lower() and 'REVIEWS' in df.columns:
-        sentiment_query = """
-        SELECT REVIEWS, 
-               NLP_SENTIMENT_DETECT(REVIEWS) as sentiment
-        FROM AIRBNB_LISTINGS
-        WHERE REVIEWS IS NOT NULL
-        """
-        sentiment_results = execute_sql(sentiment_query)
-        
-        # Visualize sentiment distribution
-        fig = px.pie(sentiment_results, 
-                    names='sentiment',
-                    title='Review Sentiment Distribution')
-        st.plotly_chart(fig)
-
-# Add text analysis capabilities
-if 'REVIEWS' in df.columns:
-    st.sidebar.markdown("---")
-    st.sidebar.header("📊 Text Analysis")
-    
-    if st.sidebar.button("Analyze Reviews"):
-        text_analysis_query = """
-        SELECT 
-            NLP_KEYWORDS(REVIEWS) as keywords,
-            NLP_ENTITIES(REVIEWS) as entities,
-            NLP_SUMMARIZE(REVIEWS, 3) as summary
-        FROM AIRBNB_LISTINGS
-        WHERE REVIEWS IS NOT NULL
-        LIMIT 100
-        """
-        analysis_results = execute_sql(text_analysis_query)
-        
-        st.sidebar.markdown("### Key Insights:")
-        st.sidebar.write(analysis_results)
 # Load and process data
 @st.cache_data
 def load_data():
@@ -223,28 +147,121 @@ def load_data():
     
     # Process amenities
     df['amenities_dict'] = df['AMENITIES'].apply(parse_amenities)
-    
-    # Process details
-    def extract_details(details_str):
-        if pd.isna(details_str):
-            return None, None, None
-        parts = str(details_str).split(',')
-        guests = rooms = beds = None
-        for part in parts:
-            if 'guest' in part.lower():
-                guests = int(''.join(filter(str.isdigit, part)) or 0)
-            elif 'bedroom' in part.lower():
-                rooms = int(''.join(filter(str.isdigit, part)) or 0)
-            elif 'bed' in part.lower() and 'bedroom' not in part.lower():
-                beds = int(''.join(filter(str.isdigit, part)) or 0)
-        return guests, rooms, beds
 
-    df[['guests', 'bedrooms', 'beds']] = pd.DataFrame(
-        df['DETAILS'].apply(extract_details).tolist(),
-        columns=['guests', 'bedrooms', 'beds']
-    )
+    def execute_llm_query(prompt, context=None):
+    session = get_snowflake_session()
     
-    return df
+    llm_query = f"""
+    SELECT CORTEX_COMPLETE('{prompt}', 
+        OBJECT_CONSTRUCT(
+            'temperature', 0.7,
+            'max_tokens', 500,
+            'context', '{context}'
+        )
+    ) as response
+    """
+    
+    result = session.sql(llm_query).collect()
+    return result[0]['RESPONSE'] if result else None
+
+    # Add this section to your dashboard
+    st.sidebar.markdown("---")
+    st.sidebar.header("💬 Natural Language Analytics")
+    
+    user_query = st.sidebar.text_area("Ask questions about the data:")
+    
+    if user_query:
+        # Provide context about available data
+        context = f"""
+        Available data includes Airbnb listings with:
+        - Prices ranging from ${df['price_value'].min():.2f} to ${df['price_value'].max():.2f}
+        - {len(df)} total listings
+        - Average rating of {df['rating_cleanliness'].mean():.2f}
+        - Locations across different areas
+        """
+        
+        response = execute_llm_query(user_query, context)
+        
+        if "create visualization" in user_query.lower() or "show graph" in user_query.lower():
+            # Handle visualization requests
+            viz_query = f"""
+            SELECT CORTEX_COMPLETE(
+                'Convert this request to a Python visualization code using plotly: {user_query}',
+                OBJECT_CONSTRUCT(
+                    'temperature', 0.2,
+                    'context', 'Using plotly and the dataframe df'
+                )
+            ) as viz_code
+            """
+            session = get_snowflake_session()
+            viz_code = session.sql(viz_query).collect()[0]['VIZ_CODE']
+            
+            try:
+                exec(viz_code)
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception as e:
+                st.error(f"Couldn't create visualization: {str(e)}")
+        
+        # Display LLM response
+        st.sidebar.markdown("### Response:")
+        st.sidebar.write(response)
+    
+        # Add sentiment analysis for reviews
+        if "sentiment" in user_query.lower() and 'REVIEWS' in df.columns:
+            sentiment_query = """
+            SELECT REVIEWS, 
+                   NLP_SENTIMENT_DETECT(REVIEWS) as sentiment
+            FROM AIRBNB_LISTINGS
+            WHERE REVIEWS IS NOT NULL
+            """
+            sentiment_results = execute_sql(sentiment_query)
+            
+            # Visualize sentiment distribution
+            fig = px.pie(sentiment_results, 
+                        names='sentiment',
+                        title='Review Sentiment Distribution')
+            st.plotly_chart(fig)
+    
+    # Add text analysis capabilities
+    if 'REVIEWS' in df.columns:
+        st.sidebar.markdown("---")
+        st.sidebar.header("📊 Text Analysis")
+        
+        if st.sidebar.button("Analyze Reviews"):
+            text_analysis_query = """
+            SELECT 
+                NLP_KEYWORDS(REVIEWS) as keywords,
+                NLP_ENTITIES(REVIEWS) as entities,
+                NLP_SUMMARIZE(REVIEWS, 3) as summary
+            FROM AIRBNB_LISTINGS
+            WHERE REVIEWS IS NOT NULL
+            LIMIT 100
+            """
+            analysis_results = execute_sql(text_analysis_query)
+            
+            st.sidebar.markdown("### Key Insights:")
+            st.sidebar.write(analysis_results)
+        # Process details
+        def extract_details(details_str):
+            if pd.isna(details_str):
+                return None, None, None
+            parts = str(details_str).split(',')
+            guests = rooms = beds = None
+            for part in parts:
+                if 'guest' in part.lower():
+                    guests = int(''.join(filter(str.isdigit, part)) or 0)
+                elif 'bedroom' in part.lower():
+                    rooms = int(''.join(filter(str.isdigit, part)) or 0)
+                elif 'bed' in part.lower() and 'bedroom' not in part.lower():
+                    beds = int(''.join(filter(str.isdigit, part)) or 0)
+            return guests, rooms, beds
+    
+        df[['guests', 'bedrooms', 'beds']] = pd.DataFrame(
+            df['DETAILS'].apply(extract_details).tolist(),
+            columns=['guests', 'bedrooms', 'beds']
+        )
+        
+        return df
 
 # Load data
 df = load_data()
