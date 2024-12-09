@@ -164,83 +164,83 @@ def load_data():
         result = session.sql(llm_query).collect()
         return result[0]['RESPONSE'] if result else None
     
-        # Add this section to your dashboard
-        st.sidebar.markdown("---")
-        st.sidebar.header("💬 Natural Language Analytics")
-        
-        user_query = st.sidebar.text_area("Ask questions about the data:")
+    # Add this section to your dashboard
+    st.sidebar.markdown("---")
+    st.sidebar.header("💬 Natural Language Analytics")
     
-        if user_query:
-            # Provide context about available data
-            context = f"""
-            Available data includes Airbnb listings with:
-            - Prices ranging from ${df['price_value'].min():.2f} to ${df['price_value'].max():.2f}
-            - {len(df)} total listings
-            - Average rating of {df['rating_cleanliness'].mean():.2f}
-            - Locations across different areas
+    user_query = st.sidebar.text_area("Ask questions about the data:")
+
+    if user_query:
+        # Provide context about available data
+        context = f"""
+        Available data includes Airbnb listings with:
+        - Prices ranging from ${df['price_value'].min():.2f} to ${df['price_value'].max():.2f}
+        - {len(df)} total listings
+        - Average rating of {df['rating_cleanliness'].mean():.2f}
+        - Locations across different areas
+        """
+        
+        response = execute_llm_query(user_query, context)
+        
+        if "create visualization" in user_query.lower() or "show graph" in user_query.lower():
+            # Handle visualization requests
+            viz_query = f"""
+            SELECT CORTEX_COMPLETE(
+                'Convert this request to a Python visualization code using plotly: {user_query}',
+                OBJECT_CONSTRUCT(
+                    'temperature', 0.2,
+                    'context', 'Using plotly and the dataframe df'
+                )
+            ) as viz_code
             """
+            session = get_snowflake_session()
+            viz_code = session.sql(viz_query).collect()[0]['VIZ_CODE']
             
-            response = execute_llm_query(user_query, context)
-            
-            if "create visualization" in user_query.lower() or "show graph" in user_query.lower():
-                # Handle visualization requests
-                viz_query = f"""
-                SELECT CORTEX_COMPLETE(
-                    'Convert this request to a Python visualization code using plotly: {user_query}',
-                    OBJECT_CONSTRUCT(
-                        'temperature', 0.2,
-                        'context', 'Using plotly and the dataframe df'
-                    )
-                ) as viz_code
-                """
-                session = get_snowflake_session()
-                viz_code = session.sql(viz_query).collect()[0]['VIZ_CODE']
-                
-                try:
-                    exec(viz_code)
-                    st.plotly_chart(fig, use_container_width=True)
-                except Exception as e:
-                    st.error(f"Couldn't create visualization: {str(e)}")
-            
-            # Display LLM response
-            st.sidebar.markdown("### Response:")
-            st.sidebar.write(response)
+            try:
+                exec(viz_code)
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception as e:
+                st.error(f"Couldn't create visualization: {str(e)}")
         
-            # Add sentiment analysis for reviews
-            if "sentiment" in user_query.lower() and 'REVIEWS' in df.columns:
-                sentiment_query = """
-                SELECT REVIEWS, 
-                       NLP_SENTIMENT_DETECT(REVIEWS) as sentiment
-                FROM AIRBNB_LISTINGS
-                WHERE REVIEWS IS NOT NULL
-                """
-                sentiment_results = execute_sql(sentiment_query)
-                
-                # Visualize sentiment distribution
-                fig = px.pie(sentiment_results, 
-                            names='sentiment',
-                            title='Review Sentiment Distribution')
-                st.plotly_chart(fig)
-        
-        # Add text analysis capabilities
-        if 'REVIEWS' in df.columns:
-            st.sidebar.markdown("---")
-            st.sidebar.header("📊 Text Analysis")
+        # Display LLM response
+        st.sidebar.markdown("### Response:")
+        st.sidebar.write(response)
+    
+        # Add sentiment analysis for reviews
+        if "sentiment" in user_query.lower() and 'REVIEWS' in df.columns:
+            sentiment_query = """
+            SELECT REVIEWS, 
+                   NLP_SENTIMENT_DETECT(REVIEWS) as sentiment
+            FROM AIRBNB_LISTINGS
+            WHERE REVIEWS IS NOT NULL
+            """
+            sentiment_results = execute_sql(sentiment_query)
             
-            if st.sidebar.button("Analyze Reviews"):
-                text_analysis_query = """
-                SELECT 
-                    NLP_KEYWORDS(REVIEWS) as keywords,
-                    NLP_ENTITIES(REVIEWS) as entities,
-                    NLP_SUMMARIZE(REVIEWS, 3) as summary
-                FROM AIRBNB_LISTINGS
-                WHERE REVIEWS IS NOT NULL
-                LIMIT 100
-                """
-                analysis_results = execute_sql(text_analysis_query)
-                
-                st.sidebar.markdown("### Key Insights:")
-                st.sidebar.write(analysis_results)
+            # Visualize sentiment distribution
+            fig = px.pie(sentiment_results, 
+                        names='sentiment',
+                        title='Review Sentiment Distribution')
+            st.plotly_chart(fig)
+    
+    # Add text analysis capabilities
+    if 'REVIEWS' in df.columns:
+        st.sidebar.markdown("---")
+        st.sidebar.header("📊 Text Analysis")
+        
+        if st.sidebar.button("Analyze Reviews"):
+            text_analysis_query = """
+            SELECT 
+                NLP_KEYWORDS(REVIEWS) as keywords,
+                NLP_ENTITIES(REVIEWS) as entities,
+                NLP_SUMMARIZE(REVIEWS, 3) as summary
+            FROM AIRBNB_LISTINGS
+            WHERE REVIEWS IS NOT NULL
+            LIMIT 100
+            """
+            analysis_results = execute_sql(text_analysis_query)
+            
+            st.sidebar.markdown("### Key Insights:")
+            st.sidebar.write(analysis_results)
     
     # Process details
     def extract_details(details_str):
