@@ -215,8 +215,8 @@ def load_data():
             WHERE REVIEWS IS NOT NULL
             """
             sentiment_results = execute_sql(sentiment_query)
-            st.write(user_query)
-            st.write(sentiment_results)
+            st.sidebar.write(user_query)
+            st.sidebar.write(sentiment_results)
             # Visualize sentiment distribution
             fig = px.pie(sentiment_results, 
                         names='sentiment',
