@@ -169,7 +169,7 @@ def load_data():
     st.sidebar.header("💬 Natural Language Analytics")
     
     user_query = st.sidebar.text_area("Ask questions about the data:")
-
+    st.sidebar.write(user_query)
     if user_query:
         # Provide context about available data
         context = f"""
