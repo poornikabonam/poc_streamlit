@@ -230,36 +230,6 @@ with tabs[1]:
     valid_locations['LAT'] = valid_locations['LAT'].astype(float)
     valid_locations['LONG'] = valid_locations['LONG'].astype(float)
     
-    # Create a simple DataFrame for the layer
-    '''map_data = valid_locations[['LAT', 'LONG', 'price_value']].copy()
-    
-    view_state = pdk.ViewState(
-        latitude=float(valid_locations['LAT'].mean()),
-        longitude=float(valid_locations['LONG'].mean()),
-        zoom=11,
-        pitch=50
-    )
-
-    # Create the layer
-    hexagon_layer = pdk.Layer(
-        'HexagonLayer',
-        data=map_data,
-        get_position=['LONG', 'LAT'],
-        radius=200,
-        elevation_scale=4,
-        elevation_range=[0, 1000],
-        pickable=True,
-        extruded=True,
-    )
-
-    # Create and display the deck
-    deck = pdk.Deck(
-        map_style='mapbox://styles/mapbox/light-v9',
-        initial_view_state=view_state,
-        layers=[hexagon_layer]
-    )
-    
-    st.pydeck_chart(deck)'''
     
     # Alternative map using Plotly for backup
     fig = px.scatter_mapbox(valid_locations,
@@ -267,6 +237,7 @@ with tabs[1]:
                            lon='LONG',
                            color='price_value',
                            size_max=15,
+                           color_discrete_sequence=["red"],
                            zoom=0,
                            title='Property Locations by Price')
     fig.update_layout(mapbox_style="carto-positron")
