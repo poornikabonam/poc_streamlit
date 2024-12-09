@@ -231,7 +231,7 @@ with tabs[1]:
     valid_locations['LONG'] = valid_locations['LONG'].astype(float)
     
     # Create a simple DataFrame for the layer
-    map_data = valid_locations[['LAT', 'LONG', 'price_value']].copy()
+    '''map_data = valid_locations[['LAT', 'LONG', 'price_value']].copy()
     
     view_state = pdk.ViewState(
         latitude=float(valid_locations['LAT'].mean()),
@@ -259,7 +259,7 @@ with tabs[1]:
         layers=[hexagon_layer]
     )
     
-    st.pydeck_chart(deck)
+    st.pydeck_chart(deck)'''
     
     # Alternative map using Plotly for backup
     fig = px.scatter_mapbox(valid_locations,
