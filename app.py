@@ -170,7 +170,7 @@ def load_data():
     
     user_query = st.sidebar.text_input("Ask questions about the data:")
     st.sidebar.write("hello")
-    st.sidebar.write(user_query)
+    st.sidebar.write(f"the question is:{user_query}")
     if user_query:
         # Provide context about available data
         context = f"""
