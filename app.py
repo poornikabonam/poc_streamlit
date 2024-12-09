@@ -149,26 +149,26 @@ def load_data():
     df['amenities_dict'] = df['AMENITIES'].apply(parse_amenities)
 
     def execute_llm_query(prompt, context=None):
-    session = get_snowflake_session()
+        session = get_snowflake_session()
+        
+        llm_query = f"""
+        SELECT CORTEX_COMPLETE('{prompt}', 
+            OBJECT_CONSTRUCT(
+                'temperature', 0.7,
+                'max_tokens', 500,
+                'context', '{context}'
+            )
+        ) as response
+        """
+        
+        result = session.sql(llm_query).collect()
+        return result[0]['RESPONSE'] if result else None
     
-    llm_query = f"""
-    SELECT CORTEX_COMPLETE('{prompt}', 
-        OBJECT_CONSTRUCT(
-            'temperature', 0.7,
-            'max_tokens', 500,
-            'context', '{context}'
-        )
-    ) as response
-    """
-    
-    result = session.sql(llm_query).collect()
-    return result[0]['RESPONSE'] if result else None
-
-    # Add this section to your dashboard
-    st.sidebar.markdown("---")
-    st.sidebar.header("💬 Natural Language Analytics")
-    
-    user_query = st.sidebar.text_area("Ask questions about the data:")
+        # Add this section to your dashboard
+        st.sidebar.markdown("---")
+        st.sidebar.header("💬 Natural Language Analytics")
+        
+        user_query = st.sidebar.text_area("Ask questions about the data:")
     
     if user_query:
         # Provide context about available data
@@ -241,27 +241,28 @@ def load_data():
             
             st.sidebar.markdown("### Key Insights:")
             st.sidebar.write(analysis_results)
-        # Process details
-        def extract_details(details_str):
-            if pd.isna(details_str):
-                return None, None, None
-            parts = str(details_str).split(',')
-            guests = rooms = beds = None
-            for part in parts:
-                if 'guest' in part.lower():
-                    guests = int(''.join(filter(str.isdigit, part)) or 0)
-                elif 'bedroom' in part.lower():
-                    rooms = int(''.join(filter(str.isdigit, part)) or 0)
-                elif 'bed' in part.lower() and 'bedroom' not in part.lower():
-                    beds = int(''.join(filter(str.isdigit, part)) or 0)
-            return guests, rooms, beds
     
-        df[['guests', 'bedrooms', 'beds']] = pd.DataFrame(
-            df['DETAILS'].apply(extract_details).tolist(),
-            columns=['guests', 'bedrooms', 'beds']
-        )
-        
-        return df
+    # Process details
+    def extract_details(details_str):
+        if pd.isna(details_str):
+            return None, None, None
+        parts = str(details_str).split(',')
+        guests = rooms = beds = None
+        for part in parts:
+            if 'guest' in part.lower():
+                guests = int(''.join(filter(str.isdigit, part)) or 0)
+            elif 'bedroom' in part.lower():
+                rooms = int(''.join(filter(str.isdigit, part)) or 0)
+            elif 'bed' in part.lower() and 'bedroom' not in part.lower():
+                beds = int(''.join(filter(str.isdigit, part)) or 0)
+        return guests, rooms, beds
+
+    df[['guests', 'bedrooms', 'beds']] = pd.DataFrame(
+        df['DETAILS'].apply(extract_details).tolist(),
+        columns=['guests', 'bedrooms', 'beds']
+    )
+    
+    return df
 
 # Load data
 df = load_data()
