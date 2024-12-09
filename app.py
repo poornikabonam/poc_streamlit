@@ -237,7 +237,7 @@ with tabs[1]:
                            lon='LONG',
                            color='price_value',
                            size_max=15,
-                           color_discrete_sequence=["red"],
+                           color_continuous_scale=px.colors.sequential.Reds,
                            zoom=0,
                            title='Property Locations by Price')
     fig.update_layout(mapbox_style="carto-positron")
